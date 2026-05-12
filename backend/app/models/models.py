@@ -7,6 +7,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -63,6 +64,7 @@ class PricePoint(Base):
 
     __table_args__ = (
         Index("ix_price_points_ticker_ts_desc", "ticker_id", ts.desc()),
+        UniqueConstraint('ticker_id', 'ts', name='uix_ticker_ts'),
     )
 
 
@@ -94,4 +96,5 @@ class Forecast(Base):
             "ticker_id",
             "forecast_for",
         ),
+        UniqueConstraint('ticker_id', 'forecast_for', 'generated_at', name='uix_ticker_forecast_for_generated_at'),
     )
