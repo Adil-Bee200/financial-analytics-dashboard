@@ -10,58 +10,43 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "symbols",
         nargs="*",
-        help="Ticker symbols (default: AAPL MSFT AMZN GOOGL META NVDA TSLA)",
+        help="Ticker symbols (default: WORKER_SYMBOLS / built-in list)",
     )
     parser.add_argument(
         "--period",
-        default="1y",
-        help="yfinance history period, e.g. 5d, 1mo, 6mo, 1y, 5y (default: 1y)",
+        default=None,
+        help="yfinance history period (default: WORKER_INGEST_PERIOD or 1y)",
     )
     parser.add_argument(
         "--no-info",
         action="store_true",
-        help="Skip Yahoo ``info`` calls (faster; ticker names stay empty).",
+        help="Skip Yahoo info calls (faster; ticker names stay empty).",
     )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="DEBUG logging",
-    )
+    parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
+    from app.core.config import settings
     from app.core.database import SessionLocal, init_db
-    from app.services.price_ingest import DEFAULT_SYMBOLS, ingest_symbol
+    from app.worker.jobs import run_eod_ingest
 
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(levelname)s %(message)s",
     )
 
-    symbols = [s.upper() for s in (args.symbols or list(DEFAULT_SYMBOLS))]
+    symbols = [s.upper() for s in args.symbols] if args.symbols else None
+    period = args.period or settings.worker_ingest_period
 
     init_db()
-
     db = SessionLocal()
     try:
-        ok = 0
-        for sym in symbols:
-            n, err = ingest_symbol(
-                db,
-                sym,
-                period=args.period,
-                fetch_info=not args.no_info,
-            )
-            if err:
-                logging.error("%s: %s", sym, err)
-                db.rollback()
-                continue
-            db.commit()
-            logging.info("%s: upserted %d daily rows", sym, n)
-            ok += 1
-        if ok == 0:
-            return 1
-        return 0
+        report = run_eod_ingest(
+            db,
+            symbols=symbols,
+            period=period,
+            fetch_info=not args.no_info,
+        )
+        return 0 if report.failed == 0 else 1
     finally:
         db.close()
 
