@@ -196,8 +196,9 @@ export function App() {
               Live prices & model forecasts
             </h1>
             <p style={{ margin: "10px 0 0", opacity: 0.72, maxWidth: 560 }}>
-              Data ingested into PostgreSQL; Ridge regression forecasts refresh on a
-              schedule. Switch tickers to inspect history and alerts.
+              Data ingested into PostgreSQL; Prophet forecasts refresh on a daily
+              schedule (naive baseline for comparison). Switch tickers to inspect
+              history and alerts.
             </p>
           </div>
           <div
@@ -391,7 +392,7 @@ export function App() {
                   : "—"}
               </div>
               <div style={{ fontSize: 12, opacity: 0.6, marginTop: 6 }}>
-                {forecasts?.forecasts?.[0]?.model_version ?? "ridge model"}
+                {forecasts?.forecasts?.[0]?.model_version ?? "prophet"}
               </div>
             </div>
 
