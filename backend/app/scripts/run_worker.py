@@ -30,14 +30,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    from app.core.config import settings
     from app.core.database import SessionLocal, init_db
+    from app.core.logging_config import setup_logging
     from app.worker.jobs import run_daily_pipeline, run_eod_ingest, run_training
     from app.worker.scheduler import start_scheduler
 
-    logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s %(levelname)s %(message)s",
-    )
+    if args.verbose:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s %(levelname)s %(message)s",
+        )
+    else:
+        setup_logging()
 
     symbols = [s.upper() for s in args.symbols] if args.symbols else None
 
