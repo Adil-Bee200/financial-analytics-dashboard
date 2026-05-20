@@ -75,7 +75,7 @@ export function StockDetail({
       <NewsSection items={news} />
 
       {showMobileFabs && (
-        <TradeActions layout="fab" onClose={onBack} />
+        <TradeActions onClose={onBack} />
       )}
     </>
   );
