@@ -24,6 +24,20 @@ export function fmtDate(iso: string): string {
   }
 }
 
+export function fmtForecastFor(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
+
 export function fmtChartTime(iso: string, range: string): string {
   try {
     const d = new Date(iso);

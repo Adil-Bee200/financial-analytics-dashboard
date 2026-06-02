@@ -8,7 +8,7 @@ import {
   type SummaryResponse,
 } from "../api/client";
 import type { TimeRange } from "../utils/chart";
-import { fmtPrice } from "../utils/format";
+import { ForecastPanel, pickProphetForecast } from "./components/ForecastPanel";
 import { StockDetail } from "./components/StockDetail";
 import { Watchlist } from "./components/Watchlist";
 
@@ -102,7 +102,7 @@ export function App() {
   }, [summary]);
 
   const summaryRow = summary?.tickers?.find((t) => t.symbol === symbol);
-  const latestForecast = forecasts?.forecasts?.[0];
+  const latestForecast = pickProphetForecast(forecasts?.forecasts);
 
   const toggleFavorite = () => {
     setFavorites((prev) => {
@@ -153,18 +153,10 @@ export function App() {
 
         <aside className="trade-panel">
           <h3>Forecast</h3>
-          <div className="forecast-box">
-            <span className="label">Prophet forecast</span>
-            <span className="value">
-              {fmtPrice(
-                latestForecast?.predicted_close ?? summaryRow?.forecast_close,
-              )}
-            </span>
-            <span className="meta">
-              {latestForecast?.model_version ?? "prophet_v1"} ·{" "}
-              {latestForecast?.horizon_label ?? "next session"}
-            </span>
-          </div>
+          <ForecastPanel
+            forecast={latestForecast}
+            fallbackPrice={summaryRow?.forecast_close}
+          />
         </aside>
       </div>
 

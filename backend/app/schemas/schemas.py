@@ -105,6 +105,7 @@ class ForecastOut(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     created_at: datetime
+    forecast_for: datetime
     horizon_label: str
     predicted_close: float
     model_version: str

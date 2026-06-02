@@ -3,6 +3,7 @@ import { buildNewsItems } from "../../data/news";
 import type { TimeRange } from "../../utils/chart";
 import { filterByRange } from "../../utils/chart";
 import { fmtChartTime } from "../../utils/format";
+import { ForecastPanel, pickProphetForecast } from "./ForecastPanel";
 import { NewsSection } from "./NewsSection";
 import { StockChart } from "./StockChart";
 import { StockHeader } from "./StockHeader";
@@ -48,7 +49,8 @@ export function StockDetail({
     label: fmtChartTime(p.ts, range),
   }));
 
-  const latestForecast = forecasts?.forecasts?.[0]?.predicted_close ?? null;
+  const prophetForecast = pickProphetForecast(forecasts?.forecasts);
+  const latestForecast = prophetForecast?.predicted_close ?? null;
   const news = buildNewsItems(symbol, alerts?.alerts ?? []);
 
   return (
@@ -71,6 +73,14 @@ export function StockDetail({
       />
 
       <TimeRangePicker value={range} onChange={onRangeChange} />
+
+      <div className="mobile-only" style={{ marginBottom: 16 }}>
+        <ForecastPanel
+          forecast={prophetForecast}
+          fallbackPrice={summaryRow?.forecast_close}
+          compact
+        />
+      </div>
 
       <NewsSection items={news} />
 

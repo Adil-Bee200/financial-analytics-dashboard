@@ -34,6 +34,7 @@ export type PricesResponse = { symbol: string; points: PricePoint[] };
 
 export type ForecastPoint = {
   created_at: string;
+  forecast_for: string;
   horizon_label: string;
   predicted_close: number;
   model_version: string;

@@ -53,6 +53,7 @@ def get_forecasts(
     forecasts = [
         ForecastOut(
             created_at=f.generated_at,
+            forecast_for=f.forecast_for,
             horizon_label=_horizon_label(f.forecast_for, f.generated_at),
             predicted_close=f.predicted_price,
             model_version=f.model_name or "unknown",
