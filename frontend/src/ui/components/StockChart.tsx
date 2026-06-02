@@ -53,7 +53,7 @@ function ChartTooltip({
 }
 
 export function StockChart({ data, range, loading, forecastPrice }: Props) {
-  if (loading) {
+  if (loading && !data.length) {
     return <div className="chart-wrap skeleton" />;
   }
 

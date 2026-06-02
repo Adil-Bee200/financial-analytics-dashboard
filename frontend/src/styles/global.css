@@ -536,6 +536,25 @@ button {
   font-size: 13px;
 }
 
+.error-banner--rate-limit {
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.35);
+  color: #fde68a;
+}
+
+.error-banner__title {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.error-banner__text {
+  margin: 0;
+  line-height: 1.45;
+  color: inherit;
+}
+
 .desktop-news-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

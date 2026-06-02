@@ -1,4 +1,7 @@
+import { ApiError, messageForHttpError } from "./errors";
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+export { ApiError, getErrorInfo, type ErrorInfo } from "./errors";
 
 export type SummaryTicker = {
   symbol: string;
@@ -42,13 +45,27 @@ export type ForecastPoint = {
 
 export type ForecastsResponse = { symbol: string; forecasts: ForecastPoint[] };
 
+const inflight = new Map<string, Promise<unknown>>();
+
 export async function apiJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`);
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(t || res.statusText);
+  const existing = inflight.get(path);
+  if (existing) return existing as Promise<T>;
+
+  const request = (async () => {
+    const res = await fetch(`${API_BASE}${path}`);
+    if (!res.ok) {
+      const body = await res.text();
+      throw new ApiError(res.status, messageForHttpError(res.status, body));
+    }
+    return res.json() as Promise<T>;
+  })();
+
+  inflight.set(path, request);
+  try {
+    return (await request) as T;
+  } finally {
+    inflight.delete(path);
   }
-  return res.json() as Promise<T>;
 }
 
 export const DEFAULT_SYMBOLS = [

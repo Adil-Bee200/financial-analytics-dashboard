@@ -1,13 +1,21 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   apiJson,
   DEFAULT_SYMBOLS,
+  getErrorInfo,
   type AlertsResponse,
-  type ForecastsResponse,
-  type PricesResponse,
+  type ErrorInfo,
   type SummaryResponse,
 } from "../api/client";
+import { useSymbolData } from "../hooks/useSymbolData";
+import {
+  buildWatchlistTickers,
+  getCachedSummary,
+  getStaleSummary,
+  setCachedSummary,
+} from "../api/symbolCache";
 import type { TimeRange } from "../utils/chart";
+import { ErrorBanner } from "./components/ErrorBanner";
 import { ForecastPanel, pickProphetForecast } from "./components/ForecastPanel";
 import { StockDetail } from "./components/StockDetail";
 import { Watchlist } from "./components/Watchlist";
@@ -15,17 +23,33 @@ import { Watchlist } from "./components/Watchlist";
 export function App() {
   const [symbol, setSymbol] = useState<string>("AAPL");
   const [range, setRange] = useState<TimeRange>("1M");
-  const [summary, setSummary] = useState<SummaryResponse | null>(null);
+  const [summary, setSummary] = useState<SummaryResponse | null>(
+    () => getCachedSummary() ?? getStaleSummary(),
+  );
+  const lastGoodSummary = useRef<SummaryResponse | null>(
+    getCachedSummary() ?? getStaleSummary(),
+  );
   const [alerts, setAlerts] = useState<AlertsResponse | null>(null);
-  const [prices, setPrices] = useState<PricesResponse | null>(null);
-  const [forecasts, setForecasts] = useState<ForecastsResponse | null>(null);
-  const [loadErr, setLoadErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadErr, setLoadErr] = useState<ErrorInfo | null>(null);
   const [mobileListOpen, setMobileListOpen] = useState(false);
 
-  const refreshSummary = useCallback(async () => {
-    setSummary(await apiJson<SummaryResponse>("/api/summary"));
+  const applySummary = useCallback((data: SummaryResponse) => {
+    lastGoodSummary.current = data;
+    setCachedSummary(data);
+    setSummary(data);
   }, []);
+
+  const {
+    prices,
+    forecasts,
+    loading,
+    error: symbolErr,
+  } = useSymbolData(symbol);
+
+  const refreshSummary = useCallback(async () => {
+    const data = await apiJson<SummaryResponse>("/api/summary");
+    applySummary(data);
+  }, [applySummary]);
 
   const refreshAlerts = useCallback(async () => {
     setAlerts(await apiJson<AlertsResponse>("/api/alerts"));
@@ -33,19 +57,37 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
+      setLoadErr(null);
+      const errors: ErrorInfo[] = [];
+
       try {
-        setLoadErr(null);
-        await Promise.all([refreshSummary(), refreshAlerts()]);
+        const data = await apiJson<SummaryResponse>("/api/summary");
+        if (!cancelled) applySummary(data);
       } catch (e) {
-        if (!cancelled)
-          setLoadErr(e instanceof Error ? e.message : String(e));
+        errors.push(getErrorInfo(e));
+        if (!cancelled && lastGoodSummary.current) {
+          setSummary(lastGoodSummary.current);
+        }
+      }
+
+      try {
+        const data = await apiJson<AlertsResponse>("/api/alerts");
+        if (!cancelled) setAlerts(data);
+      } catch (e) {
+        errors.push(getErrorInfo(e));
+      }
+
+      if (!cancelled && errors.length > 0) {
+        setLoadErr(errors.find((err) => err.rateLimited) ?? errors[0]);
       }
     })();
+
     return () => {
       cancelled = true;
     };
-  }, [refreshSummary, refreshAlerts]);
+  }, []);
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -55,41 +97,18 @@ export function App() {
     return () => window.clearInterval(id);
   }, [refreshSummary, refreshAlerts]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setLoadErr(null);
-      try {
-        const [p, f] = await Promise.all([
-          apiJson<PricesResponse>(`/api/prices/${encodeURIComponent(symbol)}`),
-          apiJson<ForecastsResponse>(
-            `/api/forecasts/${encodeURIComponent(symbol)}`,
-          ),
-        ]);
-        if (!cancelled) {
-          setPrices(p);
-          setForecasts(f);
-        }
-      } catch (e) {
-        if (!cancelled)
-          setLoadErr(e instanceof Error ? e.message : String(e));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [symbol]);
+  const tickers = useMemo(
+    () =>
+      buildWatchlistTickers(
+        summary ?? lastGoodSummary.current,
+        DEFAULT_SYMBOLS,
+      ),
+    [summary, symbol, prices],
+  );
 
-  const tickers = useMemo(() => {
-    if (summary?.tickers?.length) return summary.tickers;
-    return DEFAULT_SYMBOLS.map((s) => ({ symbol: s }));
-  }, [summary]);
-
-  const summaryRow = summary?.tickers?.find((t) => t.symbol === symbol);
+  const summaryRow = tickers.find((t) => t.symbol === symbol);
   const latestForecast = pickProphetForecast(forecasts?.forecasts);
+  const displayError = loadErr ?? symbolErr;
 
   const selectSymbol = (sym: string) => {
     setSymbol(sym);
@@ -108,11 +127,7 @@ export function App() {
         </aside>
 
         <main className="main-panel">
-          {loadErr && (
-            <div className="error-banner" role="alert" style={{ marginBottom: 16 }}>
-              {loadErr}
-            </div>
-          )}
+          <ErrorBanner error={displayError} style={{ marginBottom: 16 }} />
           <StockDetail
             symbol={symbol}
             summaryRow={summaryRow}
@@ -136,11 +151,7 @@ export function App() {
       </div>
 
       <div className="mobile-shell mobile-only">
-        {loadErr && (
-          <div className="error-banner" role="alert" style={{ margin: "0 16px 12px" }}>
-            {loadErr}
-          </div>
-        )}
+        <ErrorBanner error={displayError} style={{ margin: "0 16px 12px" }} />
 
         {mobileListOpen ? (
           <div className="phone-frame">
