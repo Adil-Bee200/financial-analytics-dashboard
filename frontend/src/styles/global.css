@@ -303,11 +303,6 @@ button {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
-.icon-btn.favorited {
-  color: #fbbf24;
-  border-color: rgba(251, 191, 36, 0.35);
-}
-
 .stock-identity {
   display: flex;
   gap: 12px;

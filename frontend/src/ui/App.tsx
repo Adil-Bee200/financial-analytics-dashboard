@@ -12,18 +12,6 @@ import { ForecastPanel, pickProphetForecast } from "./components/ForecastPanel";
 import { StockDetail } from "./components/StockDetail";
 import { Watchlist } from "./components/Watchlist";
 
-const FAVORITES_KEY = "stock-predictor-favorites";
-
-function loadFavorites(): Set<string> {
-  try {
-    const raw = localStorage.getItem(FAVORITES_KEY);
-    if (!raw) return new Set();
-    return new Set(JSON.parse(raw) as string[]);
-  } catch {
-    return new Set();
-  }
-}
-
 export function App() {
   const [symbol, setSymbol] = useState<string>("AAPL");
   const [range, setRange] = useState<TimeRange>("1M");
@@ -33,7 +21,6 @@ export function App() {
   const [forecasts, setForecasts] = useState<ForecastsResponse | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
   const [mobileListOpen, setMobileListOpen] = useState(false);
 
   const refreshSummary = useCallback(async () => {
@@ -104,16 +91,6 @@ export function App() {
   const summaryRow = summary?.tickers?.find((t) => t.symbol === symbol);
   const latestForecast = pickProphetForecast(forecasts?.forecasts);
 
-  const toggleFavorite = () => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(symbol)) next.delete(symbol);
-      else next.add(symbol);
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
-      return next;
-    });
-  };
-
   const selectSymbol = (sym: string) => {
     setSymbol(sym);
     setMobileListOpen(false);
@@ -145,8 +122,6 @@ export function App() {
             range={range}
             onRangeChange={setRange}
             loading={loading}
-            favorited={favorites.has(symbol)}
-            onToggleFavorite={toggleFavorite}
             showMobileFabs={false}
           />
         </main>
@@ -221,8 +196,6 @@ export function App() {
                 range={range}
                 onRangeChange={setRange}
                 loading={loading}
-                favorited={favorites.has(symbol)}
-                onToggleFavorite={toggleFavorite}
                 showBack
                 onBack={() => setMobileListOpen(true)}
               />

@@ -5,8 +5,6 @@ type Props = {
   symbol: string;
   price: number | null;
   changePct: number | null;
-  favorited: boolean;
-  onToggleFavorite: () => void;
   showBack?: boolean;
   onBack?: () => void;
 };
@@ -15,8 +13,6 @@ export function StockHeader({
   symbol,
   price,
   changePct,
-  favorited,
-  onToggleFavorite,
   showBack,
   onBack,
 }: Props) {
@@ -26,8 +22,8 @@ export function StockHeader({
   return (
     <header className="stock-header">
       <div style={{ width: "100%" }}>
-        <div className="nav-row">
-          {showBack ? (
+        {showBack && (
+          <div className="nav-row">
             <button
               type="button"
               className="icon-btn"
@@ -36,18 +32,8 @@ export function StockHeader({
             >
               ←
             </button>
-          ) : (
-            <span style={{ width: 36 }} />
-          )}
-          <button
-            type="button"
-            className={`icon-btn${favorited ? " favorited" : ""}`}
-            aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
-            onClick={onToggleFavorite}
-          >
-            {favorited ? "★" : "☆"}
-          </button>
-        </div>
+          </div>
+        )}
 
         <div className="stock-identity">
           <div

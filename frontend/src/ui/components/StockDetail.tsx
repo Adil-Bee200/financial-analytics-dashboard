@@ -19,8 +19,6 @@ type Props = {
   range: TimeRange;
   onRangeChange: (r: TimeRange) => void;
   loading: boolean;
-  favorited: boolean;
-  onToggleFavorite: () => void;
   showBack?: boolean;
   onBack?: () => void;
   showMobileFabs?: boolean;
@@ -35,8 +33,6 @@ export function StockDetail({
   range,
   onRangeChange,
   loading,
-  favorited,
-  onToggleFavorite,
   showBack,
   onBack,
   showMobileFabs = true,
@@ -59,8 +55,6 @@ export function StockDetail({
         symbol={symbol}
         price={summaryRow?.last_close ?? null}
         changePct={summaryRow?.change_pct ?? null}
-        favorited={favorited}
-        onToggleFavorite={onToggleFavorite}
         showBack={showBack}
         onBack={onBack}
       />
