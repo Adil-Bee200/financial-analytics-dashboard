@@ -56,6 +56,8 @@ def get_forecasts(
             forecast_for=f.forecast_for,
             horizon_label=_horizon_label(f.forecast_for, f.generated_at),
             predicted_close=f.predicted_price,
+            lower_bound=f.lower_bound,
+            upper_bound=f.upper_bound,
             model_version=f.model_name or "unknown",
         )
         for f in rows

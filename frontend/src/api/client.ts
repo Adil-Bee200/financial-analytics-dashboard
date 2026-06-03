@@ -40,6 +40,8 @@ export type ForecastPoint = {
   forecast_for: string;
   horizon_label: string;
   predicted_close: number;
+  lower_bound: number | null;
+  upper_bound: number | null;
   model_version: string;
 };
 

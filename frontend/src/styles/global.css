@@ -202,6 +202,47 @@ button {
   white-space: nowrap;
 }
 
+.forecast-box .forecast-interval {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.forecast-box .forecast-interval__title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.forecast-box .forecast-interval__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.forecast-box .forecast-interval__label {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.forecast-box .forecast-interval__value {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .forecast-box .meta {
   display: block;
   font-size: 11px;

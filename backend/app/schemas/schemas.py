@@ -108,6 +108,8 @@ class ForecastOut(BaseModel):
     forecast_for: datetime
     horizon_label: str
     predicted_close: float
+    lower_bound: float | None = None
+    upper_bound: float | None = None
     model_version: str
 
 
