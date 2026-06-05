@@ -1,7 +1,10 @@
 import { MARKET_TIMEZONE } from "./format";
 
-// Poll interval while the regular session is open (matches 5-min bars).
-export const INTRADAY_POLL_MS = 60_000;
+// Matches 5-min bars and backend intraday cache TTL (default 300s).
+export const INTRADAY_POLL_MS = 300_000;
+
+// While the market is closed, EOD summary only changes after the nightly worker.
+export const EOD_SUMMARY_POLL_MS = 15 * 60 * 1000;
 
 const SESSION_OPEN_MINUTES = 9 * 60 + 30;
 const SESSION_CLOSE_MINUTES = 16 * 60;
