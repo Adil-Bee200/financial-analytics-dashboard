@@ -9,7 +9,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Stock predictor background worker.")
     parser.add_argument(
         "--once",
-        choices=("daily", "ingest", "train"),
+        choices=("daily", "ingest", "metrics", "metrics-backfill", "train"),
         help="Run a single job and exit (for cron / GitHub Actions).",
     )
     parser.add_argument(
@@ -33,7 +33,13 @@ def main(argv: list[str] | None = None) -> int:
     from app.core.config import settings
     from app.core.database import SessionLocal, init_db
     from app.core.logging_config import setup_logging
-    from app.worker.jobs import run_daily_pipeline, run_eod_ingest, run_training
+    from app.worker.jobs import (
+        run_daily_pipeline,
+        run_eod_ingest,
+        run_metrics_backfill,
+        run_metrics_recording,
+        run_training,
+    )
     from app.worker.scheduler import start_scheduler
 
     if args.verbose:
@@ -56,11 +62,21 @@ def main(argv: list[str] | None = None) -> int:
         if args.once == "ingest":
             report = run_eod_ingest(db, symbols=symbols)
             return 0 if report.failed == 0 else 1
+        if args.once == "metrics":
+            report = run_metrics_recording(db, symbols=symbols)
+            return 0 if report.failed == 0 else 1
+        if args.once == "metrics-backfill":
+            report = run_metrics_backfill(db, symbols=symbols)
+            return 0 if report.failed == 0 else 1
         if args.once == "train":
             report = run_training(db, symbols=symbols)
             return 0 if report.failed == 0 else 1
         report = run_daily_pipeline(db, symbols=symbols)
-        if report.ingest.failed > 0 or report.train.failed > 0:
+        if (
+            report.ingest.failed > 0
+            or report.metrics.failed > 0
+            or report.train.failed > 0
+        ):
             return 1
         return 0
     finally:
