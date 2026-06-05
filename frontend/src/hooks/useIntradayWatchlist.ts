@@ -6,6 +6,7 @@ import {
   type IntradayResponse,
   type SummaryTicker,
 } from "../api/client";
+import { filterIntradaySession } from "../utils/chart";
 import { useMarketSessionPolling } from "./useMarketSessionPolling";
 
 export { INTRADAY_POLL_MS } from "../utils/marketSession";
@@ -13,7 +14,7 @@ export { INTRADAY_POLL_MS } from "../utils/marketSession";
 export function intradaySessionQuote(
   response: IntradayResponse | null | undefined,
 ): { lastClose: number | null; changePct: number | null } {
-  const points = response?.points ?? [];
+  const points = filterIntradaySession(response?.points ?? []);
   if (!points.length) return { lastClose: null, changePct: null };
 
   const last = points[points.length - 1].close;
@@ -33,11 +34,12 @@ export function mergeWatchlistWithIntraday(
     const { lastClose, changePct } = intradaySessionQuote(intraday);
     if (lastClose == null) return t;
 
+    const session = filterIntradaySession(intraday.points);
     return {
       ...t,
       last_close: lastClose,
       change_pct: changePct ?? t.change_pct,
-      last_ts: intraday.points.at(-1)?.ts ?? t.last_ts,
+      last_ts: session.at(-1)?.ts ?? t.last_ts,
     };
   });
 }

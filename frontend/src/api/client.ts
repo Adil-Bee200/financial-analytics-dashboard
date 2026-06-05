@@ -57,25 +57,51 @@ export type ForecastsResponse = { symbol: string; forecasts: ForecastPoint[] };
 
 const inflight = new Map<string, Promise<unknown>>();
 
+async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, init);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new ApiError(res.status, messageForHttpError(res.status, body));
+  }
+  return res.json() as Promise<T>;
+}
+
 export async function apiJson<T>(path: string): Promise<T> {
   const existing = inflight.get(path);
   if (existing) return existing as Promise<T>;
 
-  const request = (async () => {
-    const res = await fetch(`${API_BASE}${path}`);
-    if (!res.ok) {
-      const body = await res.text();
-      throw new ApiError(res.status, messageForHttpError(res.status, body));
-    }
-    return res.json() as Promise<T>;
-  })();
-
+  const request = fetchJson<T>(path);
   inflight.set(path, request);
   try {
-    return (await request) as T;
+    return await request;
   } finally {
     inflight.delete(path);
   }
+}
+
+const pricesInflight = new Map<string, Promise<PricesResponse>>();
+
+/** Always bypass HTTP cache — EOD series must reflect the latest ingested bar. */
+export function fetchSymbolPrices(symbol: string): Promise<PricesResponse> {
+  const key = symbol.toUpperCase();
+  const existing = pricesInflight.get(key);
+  if (existing) return existing;
+
+  const path = `/api/prices/${encodeURIComponent(symbol)}`;
+  const request = fetchJson<PricesResponse>(path, { cache: "no-store" }).finally(
+    () => {
+      pricesInflight.delete(key);
+    },
+  );
+  pricesInflight.set(key, request);
+  return request;
+}
+
+export function fetchSymbolForecasts(
+  symbol: string,
+): Promise<ForecastsResponse> {
+  const path = `/api/forecasts/${encodeURIComponent(symbol)}`;
+  return fetchJson<ForecastsResponse>(path);
 }
 
 export const DEFAULT_SYMBOLS = [

@@ -35,12 +35,11 @@ function loadFromSessionStorage(): void {
     if (!raw) return;
 
     const parsed = JSON.parse(raw) as PersistedCache;
-    summaryCache = parsed.summary ?? null;
 
+    // Summary and prices are not restored — both must revalidate from the API
+    // so the chart never shows a stale last EOD bar.
+    summaryCache = null;
     pricesCache.clear();
-    for (const [symbol, entry] of Object.entries(parsed.prices ?? {})) {
-      pricesCache.set(symbol, entry);
-    }
 
     forecastsCache.clear();
     for (const [symbol, entry] of Object.entries(parsed.forecasts ?? {})) {
@@ -54,8 +53,8 @@ function loadFromSessionStorage(): void {
 function persistToSessionStorage(): void {
   try {
     const payload: PersistedCache = {
-      summary: summaryCache,
-      prices: Object.fromEntries(pricesCache.entries()),
+      summary: null,
+      prices: {},
       forecasts: Object.fromEntries(forecastsCache.entries()),
     };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -156,3 +155,4 @@ export function hasPersistedData(): boolean {
     summaryCache != null || pricesCache.size > 0 || forecastsCache.size > 0
   );
 }
+

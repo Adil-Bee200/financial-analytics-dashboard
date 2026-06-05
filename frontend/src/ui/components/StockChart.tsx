@@ -91,12 +91,15 @@ export function StockChart({
             strokeDasharray="4 4"
           />
           <XAxis
-            dataKey="label"
+            dataKey="index"
+            type="number"
+            domain={["dataMin", "dataMax"]}
             tick={{ fill: "#71717a", fontSize: 10 }}
             axisLine={false}
             tickLine={false}
             interval="preserveStartEnd"
             minTickGap={28}
+            tickFormatter={(idx) => data[Number(idx)]?.label ?? ""}
           />
           <YAxis
             domain={[min - pad, max + pad]}

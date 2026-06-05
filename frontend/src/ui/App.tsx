@@ -12,13 +12,8 @@ import {
   mergeWatchlistWithIntraday,
   useIntradayWatchlist,
 } from "../hooks/useIntradayWatchlist";
-import {
-  buildWatchlistTickers,
-  getCachedSummary,
-  getStaleSummary,
-  setCachedSummary,
-} from "../api/symbolCache";
-import type { TimeRange } from "../utils/chart";
+import { buildWatchlistTickers, setCachedSummary } from "../api/symbolCache";
+import { eodSessionDateKey, type TimeRange } from "../utils/chart";
 import { ErrorBanner } from "./components/ErrorBanner";
 import { ForecastPanel, pickProphetForecast } from "./components/ForecastPanel";
 import { StockDetail } from "./components/StockDetail";
@@ -27,12 +22,8 @@ import { Watchlist } from "./components/Watchlist";
 export function App() {
   const [symbol, setSymbol] = useState<string>("AAPL");
   const [range, setRange] = useState<TimeRange>("1M");
-  const [summary, setSummary] = useState<SummaryResponse | null>(
-    () => getCachedSummary() ?? getStaleSummary(),
-  );
-  const lastGoodSummary = useRef<SummaryResponse | null>(
-    getCachedSummary() ?? getStaleSummary(),
-  );
+  const [summary, setSummary] = useState<SummaryResponse | null>(null);
+  const lastGoodSummary = useRef<SummaryResponse | null>(null);
   const [alerts, setAlerts] = useState<AlertsResponse | null>(null);
   const [loadErr, setLoadErr] = useState<ErrorInfo | null>(null);
   const [mobileListOpen, setMobileListOpen] = useState(false);
@@ -43,12 +34,18 @@ export function App() {
     setSummary(data);
   }, []);
 
+  const summaryLastSession = useMemo(() => {
+    const source = summary ?? lastGoodSummary.current;
+    const lastTs = source?.tickers?.find((t) => t.symbol === symbol)?.last_ts;
+    return lastTs ? eodSessionDateKey(lastTs) : null;
+  }, [summary, symbol]);
+
   const {
     prices,
     forecasts,
     loading,
     error: symbolErr,
-  } = useSymbolData(symbol);
+  } = useSymbolData(symbol, summaryLastSession);
 
   const refreshSummary = useCallback(async () => {
     const data = await apiJson<SummaryResponse>("/api/summary");
@@ -123,7 +120,9 @@ export function App() {
     return mergeWatchlistWithIntraday(base, intradayBySymbol);
   }, [summary, symbol, prices, intradayBySymbol]);
 
+  const chartSummary = summary ?? lastGoodSummary.current;
   const summaryRow = tickers.find((t) => t.symbol === symbol);
+  const eodSummaryRow = chartSummary?.tickers?.find((t) => t.symbol === symbol);
   const activeIntraday = intradayBySymbol[symbol] ?? null;
   const activeIntradayErr = intradayErrors[symbol] ?? null;
   const latestForecast = pickProphetForecast(forecasts?.forecasts);
@@ -150,6 +149,7 @@ export function App() {
           <StockDetail
             symbol={symbol}
             summaryRow={summaryRow}
+            eodSummaryRow={eodSummaryRow}
             prices={prices}
             forecasts={forecasts}
             alerts={alerts}
@@ -223,6 +223,7 @@ export function App() {
               <StockDetail
                 symbol={symbol}
                 summaryRow={summaryRow}
+                eodSummaryRow={eodSummaryRow}
                 prices={prices}
                 forecasts={forecasts}
                 alerts={alerts}

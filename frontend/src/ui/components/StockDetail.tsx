@@ -8,7 +8,11 @@ import type {
 } from "../../api/client";
 import { buildNewsItems } from "../../data/news";
 import type { TimeRange } from "../../utils/chart";
-import { computeRangeChangePct, filterByRange } from "../../utils/chart";
+import {
+  computeRangeChangePct,
+  filterIntradaySession,
+  prepareEodChartSeries,
+} from "../../utils/chart";
 import { fmtChartTime, fmtIntradayChartTime } from "../../utils/format";
 import { ErrorBanner } from "./ErrorBanner";
 import { ForecastPanel, pickProphetForecast } from "./ForecastPanel";
@@ -21,6 +25,7 @@ import { TradeActions } from "./TradeActions";
 type Props = {
   symbol: string;
   summaryRow: SummaryTicker | undefined;
+  eodSummaryRow?: SummaryTicker | undefined;
   prices: PricesResponse | null;
   forecasts: ForecastsResponse | null;
   alerts: AlertsResponse | null;
@@ -38,6 +43,7 @@ type Props = {
 export function StockDetail({
   symbol,
   summaryRow,
+  eodSummaryRow,
   prices,
   forecasts,
   alerts,
@@ -53,23 +59,38 @@ export function StockDetail({
 }: Props) {
   const isIntraday = range === "1D";
 
-  const eodFiltered = filterByRange(prices?.points ?? [], range);
-  const chartPoints = isIntraday
-    ? (intraday?.points ?? [])
-    : eodFiltered;
+  const headerPrice = summaryRow?.last_close ?? null;
+  const intradaySession = filterIntradaySession(intraday?.points ?? []);
+  const liveTs = intradaySession.at(-1)?.ts ?? null;
+  const eodPoints = prices?.points ?? [];
+  const summaryEod =
+    eodSummaryRow?.last_ts && eodSummaryRow.last_close != null
+      ? { ts: eodSummaryRow.last_ts, close: eodSummaryRow.last_close }
+      : null;
 
-  const chartData = chartPoints.map((p) => ({
+  const liveQuote =
+    headerPrice != null && liveTs
+      ? { price: headerPrice, ts: liveTs }
+      : undefined;
+
+  const chartPoints = isIntraday
+    ? intradaySession
+    : prepareEodChartSeries(eodPoints, range, liveQuote, summaryEod);
+
+  const chartData = chartPoints.map((p, index) => ({
+    index,
     ts: p.ts,
     close: p.close,
     volume: p.volume,
     label: isIntraday ? fmtIntradayChartTime(p.ts) : fmtChartTime(p.ts, range),
   }));
 
-  const headerPrice = summaryRow?.last_close ?? null;
   const headerChange =
-    computeRangeChangePct(range, prices?.points ?? [], {
+    computeRangeChangePct(range, eodPoints, {
       intradayPoints: intraday?.points,
       livePrice: headerPrice,
+      liveTs: liveQuote?.ts,
+      summaryEod,
     }) ?? summaryRow?.change_pct ?? null;
 
   const prophetForecast = pickProphetForecast(forecasts?.forecasts);
