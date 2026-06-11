@@ -31,6 +31,7 @@ import {
 } from "../api/symbolCache";
 
 import { eodSessionDateKey } from "../utils/chart";
+import { pickProphetForecast } from "../utils/forecasts";
 
 
 
@@ -67,8 +68,10 @@ export function useSymbolData(
   const [error, setError] = useState<ErrorInfo | null>(null);
 
   const pricesRef = useRef<PricesResponse | null>(null);
+  const forecastsRef = useRef<ForecastsResponse | null>(null);
 
   pricesRef.current = prices;
+  forecastsRef.current = forecasts;
 
 
 
@@ -126,35 +129,19 @@ export function useSymbolData(
 
 
 
-    if (!getCachedForecasts(symbol)) {
-
-      fetchSymbolForecasts(symbol)
-
-        .then((data) => {
-
-          if (cancelled) return;
-
-          setCachedForecasts(symbol, data);
-
-          setForecasts(data);
-
-        })
-
-        .catch((e) => {
-
-          if (cancelled) return;
-
-          if (hasAppData || !isServerWakeupError(e)) {
-
-            setError((prev) => prev ?? getErrorInfo(e));
-
-          }
-
-          setForecasts((current) => current ?? getStaleForecasts(symbol));
-
-        });
-
-    }
+    fetchSymbolForecasts(symbol)
+      .then((data) => {
+        if (cancelled) return;
+        setCachedForecasts(symbol, data);
+        setForecasts(data);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        if (hasAppData || !isServerWakeupError(e)) {
+          setError((prev) => prev ?? getErrorInfo(e));
+        }
+        setForecasts((current) => current ?? getStaleForecasts(symbol));
+      });
 
 
 
@@ -198,7 +185,15 @@ export function useSymbolData(
         });
     }
 
-    if (sessionAdvanced) {
+    const cachedForecast = pickProphetForecast(
+      forecastsRef.current?.forecasts ?? getCachedForecasts(symbol)?.forecasts,
+      summaryLastSession,
+    );
+    const forecastStale =
+      !cachedForecast ||
+      eodSessionDateKey(cachedForecast.forecast_for) <= summaryLastSession;
+
+    if (sessionAdvanced || forecastStale) {
       fetchSymbolForecasts(symbol)
         .then((data) => {
           if (cancelled) return;

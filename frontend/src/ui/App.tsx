@@ -102,7 +102,10 @@ export function App() {
   const eodSummaryRow = chartSummary?.tickers?.find((t) => t.symbol === symbol);
   const activeIntraday = intradayBySymbol[symbol] ?? null;
   const activeIntradayErr = intradayErrors[symbol] ?? null;
-  const latestForecast = pickProphetForecast(forecasts?.forecasts);
+  const latestForecast = pickProphetForecast(
+    forecasts?.forecasts,
+    summaryLastSession,
+  );
   const activeMetrics = metricsForSymbol(metrics?.tickers, symbol);
   const metricsBySymbol = useMemo(() => {
     const map: Record<string, SymbolMetrics | undefined> = {};

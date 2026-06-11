@@ -1,22 +1,16 @@
 import type { ForecastPoint } from "../../api/client";
-import { fmtDate, fmtForecastFor, fmtPrice } from "../../utils/format";
+import { fmtForecastFor, fmtMarketDate, fmtPrice } from "../../utils/format";
+import { pickProphetForecast } from "../../utils/forecasts";
 
 const PROPHET_MODEL = "prophet_v1";
+
+export { pickProphetForecast };
 
 type Props = {
   forecast: ForecastPoint | null | undefined;
   fallbackPrice?: number | null;
   compact?: boolean;
 };
-
-export function pickProphetForecast(
-  forecasts: ForecastPoint[] | undefined,
-): ForecastPoint | undefined {
-  if (!forecasts?.length) return undefined;
-  return (
-    forecasts.find((f) => f.model_version === PROPHET_MODEL) ?? forecasts[0]
-  );
-}
 
 export function ForecastPanel({ forecast, fallbackPrice, compact }: Props) {
   const price = forecast?.predicted_close ?? fallbackPrice ?? null;
@@ -57,7 +51,7 @@ export function ForecastPanel({ forecast, fallbackPrice, compact }: Props) {
         </div>
       )}
       <span className="meta">
-        {forecast ? `Updated ${fmtDate(forecast.created_at)}` : "No forecast yet"}
+        {forecast ? `Updated ${fmtMarketDate(forecast.created_at)}` : "No forecast yet"}
       </span>
     </div>
   );

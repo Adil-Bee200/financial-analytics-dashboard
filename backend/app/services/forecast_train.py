@@ -48,7 +48,13 @@ def _load_closes(session: Session, ticker_id: int) -> pd.DataFrame:
 
 
 def _to_prophet_frame(df: pd.DataFrame) -> pd.DataFrame:
-    ds = pd.to_datetime(df["ts"], utc=True).dt.tz_convert("UTC").dt.tz_localize(None)
+    # Anchor each bar to its US equity session date (ET midnight), not UTC clock time.
+    ds = (
+        pd.to_datetime(df["ts"], utc=True)
+        .dt.tz_convert(ET)
+        .dt.normalize()
+        .dt.tz_localize(None)
+    )
     return pd.DataFrame({"ds": ds, "y": df["close"].astype(float)})
 
 

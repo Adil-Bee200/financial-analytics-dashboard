@@ -5,8 +5,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models import Forecast, PricePoint, Ticker
+from app.models import PricePoint, Ticker
 from app.schemas import SummaryResponse, SummaryTickerOut
+from app.services.forecast_select import pick_active_prophet_forecast
 
 from app.core.limiter import limiter
 
@@ -38,12 +39,11 @@ def get_summary(request: Request, db: Session = Depends(get_db)) -> SummaryRespo
         ):
             change_pct = (last_close - prev_close) / prev_close * 100.0
 
-        latest_forecast = db.scalars(
-            select(Forecast)
-            .where(Forecast.ticker_id == t.id)
-            .order_by(Forecast.generated_at.desc())
-            .limit(1)
-        ).first()
+        latest_forecast = pick_active_prophet_forecast(
+            db,
+            ticker_id=t.id,
+            last_eod_ts=last_ts,
+        )
 
         rows.append(
             SummaryTickerOut(

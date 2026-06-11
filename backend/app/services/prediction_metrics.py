@@ -268,7 +268,7 @@ def _aggregate_ticker_mae(
 ) -> list[ModelMaeOut]:
     by_model: dict[str, dict[str, float]] = defaultdict(dict)
     for row in rows:
-        session_key = _eod_session_key(row.date)
+        session_key = eod_session_key(row.date)
         by_model[row.model_name][session_key] = float(row.absolute_error)
 
     models: list[ModelMaeOut] = []

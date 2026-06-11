@@ -276,21 +276,11 @@ function canAppendLiveQuote(
 
   liveTs: string | null | undefined,
 
-  summaryEod?: SummaryEod | null,
+  _summaryEod?: SummaryEod | null,
 
 ): boolean {
 
-  if (!liveTs || !isLiveSessionAfterEod(eodPoints, liveTs)) return false;
-
-  if (!summaryEod?.ts) return false;
-
-
-
-  const summarySession = eodSessionDateKey(summaryEod.ts);
-
-  const lastSession = lastEodSession(eodPoints);
-
-  return lastSession != null && lastSession >= summarySession;
+  return isLiveSessionAfterEod(eodPoints, liveTs);
 
 }
 

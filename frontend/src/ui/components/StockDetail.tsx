@@ -11,11 +11,12 @@ import type { TimeRange } from "../../utils/chart";
 import { useRegularMarketOpen } from "../../hooks/useRegularMarketOpen";
 import {
   computeRangeChangePct,
+  eodSessionDateKey,
   filterIntradaySession,
   intradaySessionEtDate,
   prepareEodChartSeries,
 } from "../../utils/chart";
-import { fmtChartTime, fmtIntradayChartTime } from "../../utils/format";
+import { fmtEodChartDate, fmtIntradayChartTime } from "../../utils/format";
 import { sessionCloseIso } from "../../utils/marketSession";
 import { AccuracyTrendChart } from "./AccuracyTrendChart";
 import { ErrorBanner } from "./ErrorBanner";
@@ -89,7 +90,9 @@ export function StockDetail({
     ts: p.ts,
     close: p.close,
     volume: p.volume,
-    label: isIntraday ? fmtIntradayChartTime(p.ts) : fmtChartTime(p.ts, range),
+    label: isIntraday
+      ? fmtIntradayChartTime(p.ts)
+      : fmtEodChartDate(p.ts, eodSessionDateKey(p.ts)),
   }));
 
   const headerChange =
@@ -100,7 +103,13 @@ export function StockDetail({
       summaryEod,
     }) ?? summaryRow?.change_pct ?? null;
 
-  const prophetForecast = pickProphetForecast(forecasts?.forecasts);
+  const lastEodSession = eodSummaryRow?.last_ts
+    ? eodSessionDateKey(eodSummaryRow.last_ts)
+    : null;
+  const prophetForecast = pickProphetForecast(
+    forecasts?.forecasts,
+    lastEodSession,
+  );
   const intradaySessionDate = intradaySessionEtDate(intradaySession);
   const chartForecast =
     isIntraday &&

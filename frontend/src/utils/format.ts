@@ -56,6 +56,39 @@ export function fmtForecastFor(iso: string | null | undefined): string {
   }
 }
 
+/** Format a trading-session calendar date (``YYYY-MM-DD``) for chart axes. */
+function fmtSessionDateKey(sessionKey: string): string {
+  const [y, m, d] = sessionKey.split("-").map(Number);
+  const noonUtc = new Date(Date.UTC(y, m - 1, d, 12));
+  return noonUtc.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/** EOD chart axis labels — always the US equity session date, not local clock time. */
+export function fmtEodChartDate(iso: string, sessionKey: string): string {
+  try {
+    return fmtSessionDateKey(sessionKey);
+  } catch {
+    return iso;
+  }
+}
+
+export function fmtMarketDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: MARKET_TIMEZONE,
+    });
+  } catch {
+    return iso;
+  }
+}
+
 export function fmtChartTime(iso: string, range: string): string {
   try {
     const d = new Date(iso);
