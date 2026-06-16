@@ -18,6 +18,12 @@ def test_eod_session_key_anchors_midnight_et_bar() -> None:
     assert eod_session_key(ts) == "2026-06-15"
 
 
+def test_eod_session_key_uses_et_date_not_utc() -> None:
+    # 02:00 UTC on the 15th is still the 14th in ET (evening).
+    ts = datetime(2026, 6, 15, 2, 0, tzinfo=timezone.utc)
+    assert eod_session_key(ts) == "2026-06-14"
+
+
 def test_next_trading_session_skips_weekend() -> None:
     assert next_trading_session_key("2026-06-12") == "2026-06-15"
     assert next_trading_session_key("2026-06-15") == "2026-06-16"

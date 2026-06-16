@@ -17,10 +17,7 @@ def _normalize_ts(ts: datetime) -> datetime:
 
 def eod_session_key(ts: datetime) -> str:
     """Trading session date for a daily bar (matches frontend ``eodSessionDateKey``)."""
-    normalized = _normalize_ts(ts)
-    et = normalized.astimezone(ET).strftime("%Y-%m-%d")
-    utc = normalized.strftime("%Y-%m-%d")
-    return et if et >= utc else utc
+    return _normalize_ts(ts).astimezone(ET).strftime("%Y-%m-%d")
 
 
 def session_midnight_utc(session_key: str) -> datetime:

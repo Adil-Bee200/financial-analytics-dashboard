@@ -56,15 +56,11 @@ export type SummaryEod = { ts: string; close: number };
 
 
 
-/** Trading session date for a daily EOD bar (handles UTC-midnight storage). */
+/** Trading session date for a daily EOD bar (US Eastern calendar day). */
 
 export function eodSessionDateKey(iso: string): string {
 
-  const et = etDateKey(iso);
-
-  const utc = new Date(iso).toISOString().slice(0, 10);
-
-  return et >= utc ? et : utc;
+  return etDateKey(iso);
 
 }
 
