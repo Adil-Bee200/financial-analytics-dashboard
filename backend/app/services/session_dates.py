@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
-
-import pandas as pd
-from pandas.tseries.offsets import BDay
 
 ET = ZoneInfo("America/New_York")
 
@@ -28,7 +25,17 @@ def session_midnight_utc(session_key: str) -> datetime:
 
 def next_trading_session_key(session_key: str) -> str:
     """Next Mon–Fri session after ``session_key`` (US equity weekday calendar)."""
-    return (pd.Timestamp(session_key) + BDay(1)).strftime("%Y-%m-%d")
+    year, month, day = (int(part) for part in session_key.split("-"))
+    session = date(year, month, day)
+    if session.weekday() == 4:  # Friday -> Monday
+        session += timedelta(days=3)
+    elif session.weekday() == 5:  # Saturday -> Monday
+        session += timedelta(days=2)
+    elif session.weekday() == 6:  # Sunday -> Monday
+        session += timedelta(days=1)
+    else:
+        session += timedelta(days=1)
+    return session.isoformat()
 
 
 def is_settled_eod_session(session_key: str, now: datetime | None = None) -> bool:
