@@ -15,7 +15,7 @@ Full-stack stock watchlist and forecasting dashboard: EOD ingestion, Prophet + n
 ## At a glance
 
 - **Watchlist** : Seven US equities with live session prices and Prophet 7-day MAE
-- **Charts** — EOD history (1W–5Y) and 5-minute intraday (1D)
+- **Charts** : EOD history (1W–5Y) and 5-minute intraday (1D)
 - **Forecasts** : Next-session close from Prophet (95% interval) and a naive benchmark
 - **Accuracy** : Daily error in Postgres, rolling MAE trend chart, model comparison
 - **Automation** : Nightly worker: ingest → score forecasts → retrain
@@ -126,14 +126,14 @@ python -m app.scripts.run_worker --once metrics-backfill   # historical accuracy
 
 Portfolio / learning project—not a production trading system.
 
-1. **Not financial advice** — experimental forecasts only
-2. **Seven symbols** — no auth or custom watchlists
-3. **Univariate EOD** — close price only; no sentiment or macro features
-4. **Next-close only** — not intraday paths or multi-day horizons
-5. **External data** — Yahoo Finance (EOD), Twelve Data (intraday)
-6. **US regular session** — 9:30 AM–4:00 PM ET, weekdays
-7. **Metrics cold start** — accuracy charts need backfill + several trading days
-8. **Free-tier hosting** — Render/Neon sleep and runtime limits apply
+1. **Not financial advice** : experimental forecasts only
+2. **Seven symbols** : no auth or custom watchlists
+3. **Univariate EOD** : close price only; no sentiment or macro features
+4. **Next-close only** : not intraday paths or multi-day horizons
+5. **External data** : Yahoo Finance (EOD), Twelve Data (intraday)
+6. **US regular session** : 9:30 AM–4:00 PM ET, weekdays
+7. **Metrics cold start** : accuracy charts need backfill + several trading days
+8. **Free-tier hosting** : Render/Neon sleep and runtime limits apply
 
 ---
 
