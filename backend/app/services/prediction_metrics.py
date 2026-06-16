@@ -206,7 +206,11 @@ def record_symbol_metrics_daily(
     session: Session,
     ticker: Ticker,
 ) -> RecordSymbolResult:
-    """Score forecasts for the latest ingested EOD session only."""
+    """Score every forecast through the latest ingested EOD session.
+
+    Re-scoring prior sessions is idempotent (upsert) and recovers from missed
+    pipeline runs or forecast/session date drift after ingest fixes.
+    """
     actuals = _load_actual_closes(session, ticker.id)
     latest = _latest_eod_session(actuals)
     if latest is None:
@@ -216,14 +220,15 @@ def record_symbol_metrics_daily(
             error="no EOD price history",
         )
 
+    eligible = {session_key for session_key in actuals if session_key <= latest}
     result = _record_symbol_metrics(
         session,
         ticker,
-        target_sessions={latest},
+        target_sessions=eligible,
     )
     if not result.error:
         log.info(
-            "%s: daily metrics for %s — %d rows",
+            "%s: daily metrics through %s — %d rows",
             ticker.symbol,
             latest,
             result.metrics_written,
@@ -256,7 +261,7 @@ def _aggregate_ticker_mae(
 ) -> list[ModelMaeOut]:
     by_model: dict[str, dict[str, float]] = defaultdict(dict)
     for row in rows:
-        session_key = _eod_session_key(row.date)
+        session_key = eod_session_key(row.date)
         by_model[row.model_name][session_key] = float(row.absolute_error)
 
     models: list[ModelMaeOut] = []
