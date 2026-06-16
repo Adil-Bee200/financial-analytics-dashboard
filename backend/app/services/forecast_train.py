@@ -12,6 +12,11 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.models import Forecast, PricePoint, Ticker
+from app.services.session_dates import (
+    eod_session_key,
+    next_trading_session_key,
+    session_midnight_utc,
+)
 
 log = logging.getLogger(__name__)
 
@@ -42,8 +47,17 @@ def _load_closes(session: Session, ticker_id: int) -> pd.DataFrame:
     ).all()
     if not rows:
         return pd.DataFrame(columns=["ts", "close"])
+
+    by_session: dict[str, float] = {}
+    for row in rows:
+        by_session[eod_session_key(row.ts)] = float(row.close_price)
+
+    sessions = sorted(by_session.keys())
     return pd.DataFrame(
-        {"ts": [r.ts for r in rows], "close": [float(r.close_price) for r in rows]}
+        {
+            "ts": [session_midnight_utc(session_key) for session_key in sessions],
+            "close": [by_session[session_key] for session_key in sessions],
+        }
     )
 
 
@@ -75,15 +89,8 @@ def _fit_prophet_next_day(prophet_df: pd.DataFrame) -> tuple[float, float, float
     pred = float(row["yhat"])
     lower = float(row["yhat_lower"])
     upper = float(row["yhat_upper"])
-    # Prophet ``ds`` is a trading calendar date (naive). Anchor at ET midnight
-    # so API/frontend show the correct US equity session day.
-    trade_day = pd.Timestamp(row["ds"]).date()
-    forecast_for = datetime(
-        trade_day.year,
-        trade_day.month,
-        trade_day.day,
-        tzinfo=ET,
-    ).astimezone(timezone.utc)
+    last_session = prophet_df["ds"].max().strftime("%Y-%m-%d")
+    forecast_for = session_midnight_utc(next_trading_session_key(last_session))
     return pred, lower, upper, forecast_for
 
 
@@ -151,8 +158,11 @@ def train_symbol(
     generated_at = datetime.now(timezone.utc)
     naive_pred = float(df["close"].iloc[-1])
 
+    last_eod_session = eod_session_key(last_ts)
+
     try:
         prophet_df = _to_prophet_frame(df)
+        prophet_df = prophet_df.groupby("ds", as_index=False).last()
         prophet_pred, prophet_lower, prophet_upper, forecast_for = _fit_prophet_next_day(
             prophet_df
         )
@@ -198,8 +208,9 @@ def train_symbol(
     )
 
     log.info(
-        "%s: prophet=%.2f (%.2f–%.2f) naive=%.2f forecast_for=%s",
+        "%s: last_eod=%s prophet=%.2f (%.2f–%.2f) naive=%.2f forecast_for=%s",
         ticker.symbol,
+        last_eod_session,
         prophet_pred,
         prophet_lower,
         prophet_upper,

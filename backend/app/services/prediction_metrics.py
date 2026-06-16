@@ -5,7 +5,6 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from statistics import mean
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -19,10 +18,9 @@ from app.schemas import (
     SymbolMetricsOut,
     SymbolMetricsTrendOut,
 )
+from app.services.session_dates import eod_session_key, session_midnight_utc
 
 log = logging.getLogger(__name__)
-
-ET = ZoneInfo("America/New_York")
 
 
 @dataclass(frozen=True)
@@ -37,16 +35,6 @@ def _normalize_ts(ts: datetime) -> datetime:
     if ts.tzinfo is None:
         return ts.replace(tzinfo=timezone.utc)
     return ts.astimezone(timezone.utc)
-
-
-def _eod_session_key(ts: datetime) -> str:
-    return _normalize_ts(ts).astimezone(ET).strftime("%Y-%m-%d")
-
-
-def _session_midnight_utc(session_key: str) -> datetime:
-    year, month, day = (int(part) for part in session_key.split("-"))
-    return datetime(year, month, day, tzinfo=ET).astimezone(timezone.utc)
-
 
 def _compute_errors(actual: float, predicted: float) -> tuple[float, float]:
     absolute_error = abs(actual - predicted)
@@ -69,7 +57,7 @@ def _load_actual_closes(session: Session, ticker_id: int) -> dict[str, float]:
 
     actuals: dict[str, float] = {}
     for row in rows:
-        actuals[_eod_session_key(row.ts)] = float(row.close_price)
+        actuals[eod_session_key(row.ts)] = float(row.close_price)
     return actuals
 
 
@@ -151,7 +139,7 @@ def _record_symbol_metrics(
         written = 0
         scored_sessions: set[str] = set()
         for forecast in forecasts:
-            session_key = _eod_session_key(forecast.forecast_for)
+            session_key = eod_session_key(forecast.forecast_for)
             if target_sessions is not None and session_key not in target_sessions:
                 continue
 
@@ -168,7 +156,7 @@ def _record_symbol_metrics(
                 session,
                 ticker_id=ticker.id,
                 model_name=str(forecast.model_name),
-                date=_session_midnight_utc(session_key),
+                date=session_midnight_utc(session_key),
                 actual_close=actual_close,
                 predicted_close=predicted_close,
                 absolute_error=absolute_error,
@@ -377,7 +365,7 @@ def _model_trend_from_rows(
 ) -> ModelMetricTrendOut:
     by_session: dict[str, PredictionMetrics] = {}
     for row in rows:
-        session_key = _eod_session_key(row.date)
+        session_key = eod_session_key(row.date)
         by_session[session_key] = row
 
     sessions = sorted(by_session.keys())
@@ -386,7 +374,7 @@ def _model_trend_from_rows(
 
     points = [
         MetricTrendPointOut(
-            date=_session_midnight_utc(session_key),
+            date=session_midnight_utc(session_key),
             absolute_error=float(by_session[session_key].absolute_error),
             percentage_error=float(by_session[session_key].percentage_error),
         )

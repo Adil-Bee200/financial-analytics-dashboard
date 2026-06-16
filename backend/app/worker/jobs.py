@@ -102,7 +102,8 @@ def run_eod_ingest(
         if r.error:
             log.error("%s: %s", r.symbol, r.error)
         else:
-            log.info("%s: upserted %d rows", r.symbol, r.rows)
+            latest = f", latest_session={r.latest_session}" if r.latest_session else ""
+            log.info("%s: upserted %d rows%s", r.symbol, r.rows, latest)
     return report
 
 

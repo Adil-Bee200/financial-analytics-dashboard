@@ -12,6 +12,11 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.models import PricePoint, Ticker
+from app.services.session_dates import (
+    eod_session_key,
+    is_settled_eod_session,
+    session_midnight_utc,
+)
 
 log = logging.getLogger(__name__)
 
@@ -100,13 +105,14 @@ def upsert_price_points(
     ticker_id: int,
     hist: pd.DataFrame,
     source: str = "yfinance",
-) -> int:
+) -> tuple[int, str | None]:
     ## Insert or update rows in ``price_points`` for ``hist``. Returns rows touched.
     if hist.empty:
-        return 0
+        return 0, None
 
     utc_index = _to_utc_index(pd.DatetimeIndex(hist.index))
     count = 0
+    latest_session: str | None = None
 
     for ts, (_, row) in zip(utc_index, hist.iterrows()):
         if not isinstance(ts, pd.Timestamp):
@@ -120,6 +126,15 @@ def upsert_price_points(
         l = _float_or_none(row.get("Low"))
         c = _float_or_none(row.get("Close"))
         v = _volume_or_none(row.get("Volume"))
+        if c is None:
+            continue
+
+        session_key = eod_session_key(ts_py)
+        if not is_settled_eod_session(session_key):
+            continue
+        ts_py = session_midnight_utc(session_key)
+        if latest_session is None or session_key > latest_session:
+            latest_session = session_key
 
         stmt = pg_insert(PricePoint).values(
             ticker_id=ticker_id,
@@ -145,13 +160,22 @@ def upsert_price_points(
         session.execute(stmt)
         count += 1
 
-    return count
+    if latest_session is not None:
+        log.debug(
+            "ticker_id=%s: anchored latest settled EOD session %s (%d rows)",
+            ticker_id,
+            latest_session,
+            count,
+        )
+
+    return count, latest_session
 
 
 @dataclass(frozen=True)
 class IngestSymbolResult:
     symbol: str
     rows: int
+    latest_session: str | None = None
     error: str | None = None
 
 
@@ -165,13 +189,22 @@ def ingest_all(
     ## Ingest each symbol; commit per symbol so one failure does not roll back others.
     results: list[IngestSymbolResult] = []
     for sym in symbols:
-        n, err = ingest_symbol(session, sym, period=period, fetch_info=fetch_info)
+        n, latest_session, err = ingest_symbol(session, sym, period=period, fetch_info=fetch_info)
         if err:
             session.rollback()
-            results.append(IngestSymbolResult(symbol=sym.upper(), rows=0, error=err))
+            results.append(
+                IngestSymbolResult(symbol=sym.upper(), rows=0, error=err)
+            )
         else:
             session.commit()
-            results.append(IngestSymbolResult(symbol=sym.upper(), rows=n, error=None))
+            results.append(
+                IngestSymbolResult(
+                    symbol=sym.upper(),
+                    rows=n,
+                    latest_session=latest_session,
+                    error=None,
+                )
+            )
     return results
 
 
@@ -181,8 +214,8 @@ def ingest_symbol(
     *,
     period: str = "1y",
     fetch_info: bool = True,
-) -> tuple[int, str | None]:
-    ## Ingest one symbol. Returns ``(rows_upserted, error_message)``.
+) -> tuple[int, str | None, str | None]:
+    ## Ingest one symbol. Returns ``(rows_upserted, latest_session, error_message)``.
     sym = symbol.upper().strip()
     try:
         ticker = ensure_ticker(session, sym)
@@ -190,9 +223,9 @@ def ingest_symbol(
             enrich_ticker_metadata(session, ticker)
         hist = fetch_daily_history(sym, period)
         if hist.empty:
-            return 0, f"no price rows returned for {sym}"
-        n = upsert_price_points(session, ticker_id=ticker.id, hist=hist)
-        return n, None
+            return 0, None, f"no price rows returned for {sym}"
+        n, latest_session = upsert_price_points(session, ticker_id=ticker.id, hist=hist)
+        return n, latest_session, None
     except Exception as exc:  # noqa: BLE001
         log.exception("ingest failed for %s", sym)
-        return 0, str(exc)
+        return 0, None, str(exc)
